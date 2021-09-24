@@ -7,8 +7,6 @@ from datetime import datetime
 import telegram
 import time
 
-is_test = True
-# is_test = False
 #初始化配置文件
 file = 'config.ini'
 if not os.path.exists(file):
@@ -20,6 +18,8 @@ if not os.path.exists(file):
     con.set('telegram', 'offical_channel_id', '')
     con.set('telegram', 'test_channel_id', '')
     con.set('telegram', 'bot_token', '')
+    con.add_section('status')
+    con.set('status', 'is_test', 'False')
     with open(file, 'w') as fw:
         con.write(fw)
     print('已生成配置文件！程序退出！')
@@ -32,6 +32,7 @@ personal_chat_id = dict(con.items('telegram'))['personal_chat_id']
 offical_channel_id = dict(con.items('telegram'))['offical_channel_id']
 test_channel_id = dict(con.items('telegram'))['test_channel_id']
 bot_token = dict(con.items('telegram'))['bot_token']
+is_test = True if dict(con.items('status'))['is_test'].lower() == 'true' else False
 
 #变量定义
 getStatus = "https://openapi.wtt.fun:50433/web/farming/tool/getHarvesterSummary"
