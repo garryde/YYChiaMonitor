@@ -45,9 +45,8 @@ requestBody = '{}'
 bot = telegram.Bot(token=bot_token)
 
 last_update_structure = {"isOnline":False,"space":0,"healthOf24hStr":"00","today":"00"}
-err = 0
-error_time = 3
-newVaccine = False
+
+isSecondaryCheckSpace = False
 
 #休眠分钟数
 interval = 15
@@ -148,7 +147,19 @@ while True:
     if isOnline != last_update.get('isOnline'):
         sendChannelMessage("#矿机状态变化提醒\n当前状态："+ ("在线" if isOnline else "离线") + "\n上次在线："+dateLastOnline)
         last_update['isOnline'] = isOnline
+
     if space != last_update.get('space'):
+        #算力异常二次校验
+        if space < last_update.get('space')/2:
+            print("算力异常：当前算力："+space+"之前算力："+last_update.get('space'))
+            if isSecondaryCheckSpace:
+                #关闭二次校验标记，发送消息
+                isSecondaryCheckSpace = False
+            else:
+                # 进入二次校验
+                time.sleep(60)
+                isSecondaryCheckSpace = True
+                continue
         sendChannelMessage("#算力变化提醒\n在线算力："+str(fileSize)+"TB\n有效农田："+str(space))
         last_update['space'] = space
 
