@@ -66,7 +66,7 @@ def sendChannelMessage(message):
     except Exception as e:
         print(e)
         time.sleep(30)
-        sendPersonalMessage("#ChiaMonitor Telegram频道文本消息异常！")
+        sendPersonalMessage("#ChiaMonitor Telegram频道文本消息异常！\n"+str(e))
 
 # Telegram个人消息
 def sendPersonalMessage(message, error = False):
@@ -152,7 +152,7 @@ while True:
     if space != last_update.get('space'):
         #算力异常二次校验
         if space < last_update.get('space')/2:
-            print("算力异常：当前算力："+space+"之前算力："+last_update.get('space'))
+            print("算力异常：当前算力："+str(space)+"之前算力："+str(last_update.get('space')))
             if isSecondaryCheckSpace:
                 #关闭二次校验标记，发送消息
                 isSecondaryCheckSpace = False
