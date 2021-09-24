@@ -183,8 +183,9 @@ while True:
         print()
     #判断数据一致性，发送通知
     if healthOf24hStr[1] != last_update['healthOf24hStr'][1]:
-        sendChannelMessage("#健康度变化提醒\n当前健康度："+healthOf24hStr)
-        last_update['healthOf24hStr'] = healthOf24hStr
+        if isOnline:
+            sendChannelMessage("#健康度变化提醒\n当前健康度："+healthOf24hStr)
+            last_update['healthOf24hStr'] = healthOf24hStr
 
    ##########################收入##########################
     try:
