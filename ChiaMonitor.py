@@ -151,7 +151,7 @@ while True:
 
     if space != last_update.get('space'):
         #算力异常二次校验
-        if space < last_update.get('space')/2:
+        if space < last_update.get('space')*0.8:
             print("算力异常：当前算力："+str(space)+"之前算力："+str(last_update.get('space')))
             if isSecondaryCheckSpace:
                 #关闭二次校验标记，发送消息
