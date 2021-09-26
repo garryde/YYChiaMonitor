@@ -18,8 +18,9 @@ if not os.path.exists(file):
     con.set('telegram', 'offical_channel_id', '')
     con.set('telegram', 'test_channel_id', '')
     con.set('telegram', 'bot_token', '')
-    con.add_section('status')
-    con.set('status', 'is_test', 'False')
+    con.add_section('sysconfig')
+    con.set('sysconfig', 'is_test', 'False')
+    con.set('sysconfig', 'space_threshold', '1')
     with open(file, 'w') as fw:
         con.write(fw)
     print('已生成配置文件！程序退出！')
@@ -32,8 +33,8 @@ personal_chat_id = dict(con.items('telegram'))['personal_chat_id']
 offical_channel_id = dict(con.items('telegram'))['offical_channel_id']
 test_channel_id = dict(con.items('telegram'))['test_channel_id']
 bot_token = dict(con.items('telegram'))['bot_token']
-is_test = True if dict(con.items('status'))['is_test'].lower() == 'true' else False
-
+is_test = True if dict(con.items('sysconfig'))['is_test'].lower() == 'true' else False
+space_threshold = float(dict(con.items('sysconfig'))['space_threshold'])
 #变量定义
 getStatus = "https://openapi.wtt.fun:50433/web/farming/tool/getHarvesterSummary"
 getHealth = "https://openapi.wtt.fun:50433/web/machine/get24HourHealthInfo"
@@ -151,7 +152,7 @@ while True:
 
     if space != last_update.get('space'):
         #算力异常二次校验
-        if space < last_update.get('space')*0.8:
+        if space < last_update.get('space')*space_threshold:
             print("算力异常：当前算力："+str(space)+"之前算力："+str(last_update.get('space')))
             if isSecondaryCheckSpace:
                 #关闭二次校验标记，发送消息
