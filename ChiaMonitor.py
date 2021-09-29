@@ -152,18 +152,13 @@ while True:
 
     if space != last_update.get('space'):
         #算力异常二次校验
-        if space < last_update.get('space')*space_threshold:
+        if (space < last_update.get('space')*space_threshold) & (not isSecondaryCheckSpace):
             print("算力异常：当前算力："+str(space)+"之前算力："+str(last_update.get('space')))
-            if isSecondaryCheckSpace:
-                #关闭二次校验标记，发送消息
-                isSecondaryCheckSpace = False
-            else:
-                # 进入二次校验
-                time.sleep(60)
-                isSecondaryCheckSpace = True
-                continue
-        sendChannelMessage("#算力变化提醒\n在线算力："+str(fileSize)+"TB\n有效农田："+str(space))
-        last_update['space'] = space
+            isSecondaryCheckSpace = True
+        else:
+            isSecondaryCheckSpace = False
+            sendChannelMessage("#算力变化提醒\n在线算力："+str(fileSize)+"TB\n有效农田："+str(space))
+            last_update['space'] = space
 
    ##########################健康度##########################
     try:
