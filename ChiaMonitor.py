@@ -159,6 +159,8 @@ while True:
             isSecondaryCheckSpace = False
             sendChannelMessage("#算力变化提醒\n在线算力："+str(fileSize)+"TB\n有效农田："+str(space))
             last_update['space'] = space
+    else:
+        isSecondaryCheckSpace = False
 
    ##########################健康度##########################
     try:
