@@ -52,6 +52,9 @@ isSecondaryCheckSpace = False
 
 #休眠分钟数
 interval = 15
+#错误次数
+err = 0
+error_time = 10
 
 #发送频道
 chat_id = offical_channel_id
@@ -70,18 +73,24 @@ def sendChannelMessage(message):
         sendPersonalMessage("#ChiaMonitor Telegram频道文本消息异常！\n"+str(e))
 
 # Telegram个人消息
-def sendPersonalMessage(message, error = False):
+def sendPersonalMessage(message, direct = False):
     try:
-        if error:
-            global err
-            err += 1
-            print(err)
-            if err <= error_time: return
-            if err > 10:
-                bot.send_message(personal_chat_id, "#ChiaMonitor 异常超过10次！", disable_notification=True)
-        bot.send_message(personal_chat_id, message, disable_notification=True)
+        if direct:
+            bot.send_message(personal_chat_id, "#全局异常"+str(message), disable_notification=True)
+            return
+        global err
+        global error_time
+        err += 1
+        print(err)
+        if err <= error_time:
+            time.sleep(interval * 60)
+        else:
+            bot.send_message(personal_chat_id, "#ChiaMonitor 异常超过10次！", disable_notification=True)
+            bot.send_message(personal_chat_id, message, disable_notification=True)
+            err = 0
+            time.sleep(interval * 60)
     except:
-        time.sleep(interval * 60 * 5)
+        time.sleep(interval * 60)
 #获取API数据
 def fetch_data(url):
     req = requests.post(url,headers= {requestHeaderName:requestHeaderKey},data = requestBody)  # 请求url（GET请求）
@@ -116,104 +125,108 @@ if is_test:
   last_update = last_update_structure
 
 while True:
-    ##########################矿机状态##########################
-    #获取数据——处理网络失败异常
     try:
-        current_status = fetch_data(getStatus)
-    except Exception as e:
-        time.sleep(60)
-        sendPersonalMessage("#ChiaMonitor 网络请求异常！")
-        print("网络请求异常")
-        print(e)
-        print()
-        continue
-    #解析结果-——处理key错误异常
-    try:
-        current_status = current_status['result'][0]
-    except Exception as e:
-        sendPersonalMessage("#ChiaMonitor Status解析错误！")
-        print("Status解析错误")
-        print(e)
-        sendPersonalMessage("#ChiaMonitor\n"+current_status['errcode']+":"+current_status['message']+"\n系统已退出")
-        print(current_status['message'])
-        print()
-        sys.exit()
-    #解析数据
-    isOnline = current_status['isOnline']
-    dateLastOnline = str(datetime.fromtimestamp(current_status["dateLastOnline"]/1000))[0:19]
+        ##########################矿机状态##########################
+        #获取数据——处理网络失败异常
+        try:
+            current_status = fetch_data(getStatus)
+        except Exception as e:
+            time.sleep(60)
+            sendPersonalMessage("#ChiaMonitor 网络请求异常！")
+            print("网络请求异常")
+            print(e)
+            print()
+            continue
+        #解析结果-——处理key错误异常
+        try:
+            current_status = current_status['result'][0]
+        except Exception as e:
+            sendPersonalMessage("#ChiaMonitor Status解析错误！")
+            print("Status解析错误")
+            print(e)
+            sendPersonalMessage("#ChiaMonitor\n"+current_status['errcode']+":"+current_status['message']+"\n系统已退出")
+            print(current_status['message'])
+            print()
+            sys.exit()
+        #解析数据
+        isOnline = current_status['state']
+        dateLastOnline = str(datetime.fromtimestamp(current_status["dateLastOnline"]/1000))[0:19]
 
-    space = current_status['space']
-    fileSize = round(current_status["fileSize"]/1024/1024/1024/1024,2)
+        space = current_status['space']
+        fileSize = round(current_status["fileSize"]/1024/1024/1024/1024,2)
 
-    #判断数据一致性，发送通知
-    if isOnline != last_update.get('isOnline'):
-        sendChannelMessage("#矿机状态变化提醒\n当前状态："+ ("在线" if isOnline else "离线") + "\n上次在线："+dateLastOnline)
-        last_update['isOnline'] = isOnline
+        #判断数据一致性，发送通知
+        if isOnline != last_update.get('isOnline'):
+            sendChannelMessage("#矿机状态变化提醒\n当前状态："+ str(isOnline) + "\n上次在线："+dateLastOnline)
+            last_update['isOnline'] = isOnline
 
-    if space != last_update.get('space'):
-        #算力异常二次校验
-        if (space < last_update.get('space')*space_threshold) & (not isSecondaryCheckSpace):
-            print("算力异常：当前算力："+str(space)+"之前算力："+str(last_update.get('space')))
-            isSecondaryCheckSpace = True
+        if space != last_update.get('space'):
+            #算力异常二次校验
+            if (space < last_update.get('space')*space_threshold) & (not isSecondaryCheckSpace):
+                print("算力异常：当前算力："+str(space)+"之前算力："+str(last_update.get('space')))
+                isSecondaryCheckSpace = True
+            else:
+                isSecondaryCheckSpace = False
+                sendChannelMessage("#算力变化提醒\n在线算力："+str(fileSize)+"TB\n有效农田："+str(space))
+                last_update['space'] = space
         else:
             isSecondaryCheckSpace = False
-            sendChannelMessage("#算力变化提醒\n在线算力："+str(fileSize)+"TB\n有效农田："+str(space))
-            last_update['space'] = space
-    else:
-        isSecondaryCheckSpace = False
 
-   ##########################健康度##########################
-    try:
-        current_health = fetch_data(getHealth)
-    except Exception as e:
-        time.sleep(60)
-        sendPersonalMessage("#ChiaMonitor 网络请求异常！")
-        print("网络请求异常")
-        print(e)
-        print()
-        continue
-    #解析结果-——处理key错误异常
-    try:
-        healthOf24hStr = str(current_health['result']['healthOf24hStr'])
-    except Exception as e:
-        sendPersonalMessage("#ChiaMonitor health解析错误！\n当前Json：" + current_health)
-        print("health解析错误")
-        print(e)
-        print()
-    #判断数据一致性，发送通知
-    if healthOf24hStr[1] != last_update['healthOf24hStr'][1]:
-        if isOnline:
-            sendChannelMessage("#健康度变化提醒\n当前健康度："+healthOf24hStr)
-            last_update['healthOf24hStr'] = healthOf24hStr
+       ##########################健康度##########################
+        # try:
+        #     current_health = fetch_data(getHealth)
+        # except Exception as e:
+        #     time.sleep(60)
+        #     sendPersonalMessage("#ChiaMonitor 网络请求异常！")
+        #     print("网络请求异常")
+        #     print(e)
+        #     print()
+        #     continue
+        # #解析结果-——处理key错误异常
+        # try:
+        #     healthOf24hStr = str(current_health['result']['healthOf24hStr'])
+        # except Exception as e:
+        #     sendPersonalMessage("#ChiaMonitor health解析错误！\n当前Json：" + current_health)
+        #     print("health解析错误")
+        #     print(e)
+        #     print()
+        # #判断数据一致性，发送通知
+        # if healthOf24hStr[1] != last_update['healthOf24hStr'][1]:
+        #     if isOnline:
+        #         sendChannelMessage("#健康度变化提醒\n当前健康度："+healthOf24hStr)
+        #         last_update['healthOf24hStr'] = healthOf24hStr
 
-   ##########################收入##########################
-    try:
-        current_income = fetch_data(getIncome)
-    except Exception as e:
-        time.sleep(60)
-        sendPersonalMessage("#ChiaMonitor 网络请求异常！")
-        print("网络请求异常")
-        print(e)
-        print()
-        continue
-    #解析结果-——处理key错误异常
-    try:
-        current_income = current_income['result']
-    except Exception as e:
-        sendPersonalMessage("#ChiaMonitor income解析错误！\n当前Json：" + current_health)
-        print("income解析错误")
-        print(e)
-        print()
-    #解析数据
-    today = setIncomeFomat(current_income['yesterday'])
-    yesterday = setIncomeFomat(current_income['daysOf14'][1]['amountStr'])
-    thisWeek = setIncomeFomat(current_income['thisWeek'])
-    lastWeek = setIncomeFomat(current_income['lastWeek'])
-    #判断数据一致性，发送通知
-    if today != last_update.get('today'):
-        sendChannelMessage("#收益变化提醒\n今日收益："+today+"\n昨日收益："+yesterday+"\n本周收益："+thisWeek+"\n上周收益："+lastWeek)
-        last_update['today'] = today
+       ##########################收入##########################
+        try:
+            current_income = fetch_data(getIncome)
+        except Exception as e:
+            time.sleep(60)
+            sendPersonalMessage("#ChiaMonitor 网络请求异常！")
+            print("网络请求异常")
+            print(e)
+            print()
+            continue
+        #解析结果-——处理key错误异常
+        try:
+            current_income = current_income['result']
+        except Exception as e:
+            sendPersonalMessage("#ChiaMonitor income解析错误！\n当前Json：" + current_income)
+            print("income解析错误")
+            print(e)
+            print()
+        #解析数据
+        today = setIncomeFomat(current_income['yesterday'])
+        yesterday = setIncomeFomat(current_income['daysOf14'][1]['amountStr'])
+        thisWeek = setIncomeFomat(current_income['thisWeek'])
+        lastWeek = setIncomeFomat(current_income['lastWeek'])
+        #判断数据一致性，发送通知
+        if today != last_update.get('today'):
+            sendChannelMessage("#收益变化提醒\n今日收益："+today+"\n昨日收益："+yesterday+"\n本周收益："+thisWeek+"\n上周收益："+lastWeek)
+            last_update['today'] = today
 
-    if not is_test:
-        writeLocalData(last_update)
-    time.sleep(interval * 60)
+        if not is_test:
+            writeLocalData(last_update)
+        time.sleep(interval * 60)
+    except Exception as e:
+        sendPersonalMessage(str(e),True)
+        time.sleep(interval * 600)
